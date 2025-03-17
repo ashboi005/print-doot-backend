@@ -1,0 +1,149 @@
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from sqlalchemy import asc, desc
+from sqlalchemy.orm import selectinload
+from routers.orders.models import Order, OrderItem, OrderCounter
+from routers.orders.schemas import OrderResponse
+from utils.aws import upload_image_to_s3
+from utils.order import generate_order_id  
+from config import get_db
+import json
+from typing import List
+
+orders_router = APIRouter()
+
+
+@orders_router.post("/checkout", status_code=status.HTTP_201_CREATED)
+async def place_order(
+    clerkId: str = Form(...),
+    total_price: int = Form(...),
+    products: str = Form(...),
+    files: List[UploadFile] = File(None),
+    db: AsyncSession = Depends(get_db)
+):
+    # ✅ STEP 1: Fetch and update OrderCounter from DB
+    counter_result = await db.execute(select(OrderCounter).limit(1))
+    counter = counter_result.scalar()
+
+    if not counter:
+        counter = OrderCounter(current_number=1)  # Start from 1 if not present
+        db.add(counter)
+        await db.commit()
+        await db.refresh(counter)
+
+    # ✅ STEP 2: Generate custom formatted order ID
+    order_id = generate_order_id(counter.current_number)
+
+    # ✅ STEP 3: Increment counter for next order
+    counter.current_number += 1
+    await db.commit()  # Commit counter increment
+
+    # ✅ STEP 4: Process order
+    products_data = json.loads(products)
+
+    new_order = Order(
+        order_id=order_id,
+        clerkId=clerkId,
+        total_price=total_price,
+        status="placed"
+    )
+    db.add(new_order)
+    await db.flush()  # Get new_order.id for OrderItems
+
+    file_index = 0  # Index to map files to products
+
+    for item in products_data:
+        user_cust_value = None
+
+        # ✅ Handle user customization image/logo
+        if item['user_customization_type'] in ["image", "logo"]:
+            if files and len(files) > file_index:
+                s3_url = upload_image_to_s3(files[file_index], folder="orders")
+                user_cust_value = s3_url
+                file_index += 1
+            else:
+                raise HTTPException(status_code=400, detail="Missing image/logo file for product.")
+
+        # ✅ Handle user customization text
+        elif item['user_customization_type'] == "text":
+            user_cust_value = item.get("user_customization_value")
+
+        # ✅ Create order item
+        order_item = OrderItem(
+            order_id=new_order.id,
+            product_id=item['product_id'],
+            quantity=item['quantity'],
+            selected_customizations=item.get('selected_customizations'),
+            user_customization_type=item['user_customization_type'],
+            user_customization_value=user_cust_value,
+            individual_price=item['individual_price']
+        )
+        db.add(order_item)
+
+    await db.commit()
+    await db.refresh(new_order)
+
+    return {"message": "Order placed successfully", "order_id": new_order.order_id}
+
+
+@orders_router.get("/user/{clerkId}", response_model=List[OrderResponse])
+async def get_orders_by_user(
+    clerkId: str,
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    sort: str = Query("desc", regex="^(asc|desc)$"),
+    db: AsyncSession = Depends(get_db)
+):
+    sort_order = asc(Order.created_at) if sort == "asc" else desc(Order.created_at)
+
+    result = await db.execute(
+        select(Order)
+        .options(selectinload(Order.items))  # ✅ Fix lazy loading
+        .where(Order.clerkId == clerkId)
+        .order_by(sort_order)
+        .offset(offset)
+        .limit(limit)
+    )
+    orders = result.scalars().all()
+    return orders
+
+@orders_router.get("/{order_id}", response_model=OrderResponse)
+async def get_order_by_id(
+    order_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(Order)
+        .options(selectinload(Order.items))  
+        .where(Order.order_id == order_id)
+    )
+    order = result.scalar()
+
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    return order
+
+@orders_router.get("/admin/orders", response_model=List[OrderResponse])
+async def get_all_orders(
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    sort: str = Query("desc", regex="^(asc|desc)$"),
+    db: AsyncSession = Depends(get_db)
+):
+    sort_order = asc(Order.created_at) if sort == "asc" else desc(Order.created_at)
+
+    result = await db.execute(
+        select(Order)
+        .options(
+            selectinload(Order.items),   
+            selectinload(Order.receipt) 
+        )
+        .order_by(sort_order)
+        .offset(offset)
+        .limit(limit)
+    )
+
+    orders = result.scalars().all()
+    return orders

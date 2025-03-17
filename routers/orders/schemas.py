@@ -1,0 +1,51 @@
+from pydantic import BaseModel
+from typing import Optional, Dict, List
+from enum import Enum
+from datetime import datetime
+
+
+class UserCustomizationEnum(str, Enum):
+    text = "text"
+    image = "image"
+    logo = "logo"
+
+
+class OrderItemCreate(BaseModel):
+    product_id: int
+    quantity: int
+    selected_customizations: Optional[Dict[str, str]] = None
+    user_customization_type: UserCustomizationEnum
+    user_customization_value: Optional[str]  # Optional if image/logo uploaded separately
+    individual_price: int
+
+
+class OrderCreate(BaseModel):
+    clerkId: str  # ✅ clerkId
+    products: List[OrderItemCreate]
+    total_price: int
+
+
+# ✅ Response schemas
+class OrderItemResponse(BaseModel):
+    product_id: int
+    quantity: int
+    selected_customizations: Optional[Dict[str, str]] = None
+    user_customization_type: UserCustomizationEnum
+    user_customization_value: Optional[str]
+    individual_price: int
+
+    class Config:
+        orm_mode = True
+
+
+class OrderResponse(BaseModel):
+    order_id: str
+    clerkId: str  # ✅ clerkId
+    total_price: int
+    status: str
+    created_at: datetime
+    items: List[OrderItemResponse]
+    receipt_id: Optional[int] = None
+
+    class Config:
+        orm_mode = True
