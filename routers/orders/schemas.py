@@ -11,7 +11,7 @@ class UserCustomizationEnum(str, Enum):
 
 
 class OrderItemCreate(BaseModel):
-    product_id: int
+    product_id: str
     quantity: int
     selected_customizations: Optional[Dict[str, str]] = None
     user_customization_type: UserCustomizationEnum
@@ -27,7 +27,7 @@ class OrderCreate(BaseModel):
 
 # ✅ Response schemas
 class OrderItemResponse(BaseModel):
-    product_id: int
+    product_id: str
     quantity: int
     selected_customizations: Optional[Dict[str, str]] = None
     user_customization_type: UserCustomizationEnum

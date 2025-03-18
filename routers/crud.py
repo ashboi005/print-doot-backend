@@ -9,3 +9,7 @@ async def get_user_by_email(db: AsyncSession, email: str):
 async def get_user_by_clerkId(db: AsyncSession, clerkId: str):
     result = await db.execute(select(User).filter(User.clerkId == clerkId))
     return result.scalars().first()
+
+async def get_email_by_clerkId(db: AsyncSession, clerkId: str):
+    result = await db.execute(select(User.email).filter(User.clerkId == clerkId))
+    return result.scalar()

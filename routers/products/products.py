@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List, Optional
-from routers.products.models import Product, Category, ProductStatus
+from models import Product, Category, ProductStatus
 from routers.products.schemas import ProductCreateForm, ProductResponse, ProductStatusEnum, ProductUpdate, ProductCreateJSON
 from config import get_db
 from utils.aws import upload_image_to_s3

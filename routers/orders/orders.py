@@ -3,16 +3,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import selectinload
-from routers.orders.models import Order, OrderItem, OrderCounter
+from models import Order, OrderItem, OrderCounter
 from routers.orders.schemas import OrderResponse
 from utils.aws import upload_image_to_s3
 from utils.order import generate_order_id  
 from config import get_db
 import json
 from typing import List
+from utils.email_helpers import send_owner_email, send_customer_email
 
 orders_router = APIRouter()
-
 
 @orders_router.post("/checkout", status_code=status.HTTP_201_CREATED)
 async def place_order(
@@ -22,24 +22,20 @@ async def place_order(
     files: List[UploadFile] = File(None),
     db: AsyncSession = Depends(get_db)
 ):
-    # ✅ STEP 1: Fetch and update OrderCounter from DB
     counter_result = await db.execute(select(OrderCounter).limit(1))
     counter = counter_result.scalar()
 
     if not counter:
-        counter = OrderCounter(current_number=1)  # Start from 1 if not present
+        counter = OrderCounter(current_number=1)  
         db.add(counter)
         await db.commit()
         await db.refresh(counter)
 
-    # ✅ STEP 2: Generate custom formatted order ID
     order_id = generate_order_id(counter.current_number)
 
-    # ✅ STEP 3: Increment counter for next order
     counter.current_number += 1
-    await db.commit()  # Commit counter increment
+    await db.commit()  
 
-    # ✅ STEP 4: Process order
     products_data = json.loads(products)
 
     new_order = Order(
@@ -84,7 +80,14 @@ async def place_order(
     await db.commit()
     await db.refresh(new_order)
 
+    # Send email to the owner
+    await send_owner_email(new_order.order_id, total_price)
+
+    # Send email to the customer
+    await send_customer_email(new_order.order_id, clerkId, total_price, db)
+
     return {"message": "Order placed successfully", "order_id": new_order.order_id}
+
 
 
 @orders_router.get("/user/{clerkId}", response_model=List[OrderResponse])

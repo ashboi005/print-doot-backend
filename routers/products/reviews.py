@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List
-from routers.products.models import ProductReview, Product
+from models import ProductReview, Product
 from routers.products.schemas import ProductReviewCreate, ProductReviewResponse
 from ..crud import get_user_by_clerkId  
 from config import get_db  
