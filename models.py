@@ -55,6 +55,7 @@ class Product(Base):
     average_rating = Column(Float, default=0)
     created_at = Column(TIMESTAMP, server_default=func.now())
 
+    category = relationship("Category")
     order_items = relationship("OrderItem", back_populates="product")
 
 # ProductReview model.

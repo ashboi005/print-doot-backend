@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, root_validator
 from typing import Optional, Dict, List
 from enum import Enum
 from fastapi import Form
@@ -47,6 +47,7 @@ class ProductCreateForm:
         self.customization_options = customization_options
         self.status = status
 
+
 class ProductResponse(BaseModel):
     product_id: str
     name: str
@@ -54,11 +55,27 @@ class ProductResponse(BaseModel):
     description: Optional[str] = None
     average_rating: float
     status: ProductStatusEnum
-    main_image_url: str  # ✅ Add this to return main image URL
-    side_images_url: Optional[List[str]] = None  # ✅ Add this to return side images URLs
+    main_image_url: str
+    side_images_url: Optional[List[str]] = None
+    category_name: Optional[str] = None  # New field to return the category name
 
     class Config:
         orm_mode = True
+
+    @root_validator(pre=True)
+    def set_category_name(cls, values):
+        # If values is not a dict, convert it using __dict__
+        if not isinstance(values, dict):
+            values = values.__dict__
+        category = values.get("category")
+        if category:
+            if isinstance(category, dict):
+                values["category_name"] = category.get("name")
+            elif hasattr(category, "name"):
+                values["category_name"] = category.name
+        return values
+
+
 
 # ✅ Pydantic model for Update (without image handling)
 class ProductUpdate(BaseModel):
@@ -106,3 +123,12 @@ class ProductReviewResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class ProductListResponse(BaseModel):
+    total: int
+    products: List[ProductResponse]
+
+class CategoryListResponse(BaseModel):
+    total: int
+    categories: List[CategoryResponse]

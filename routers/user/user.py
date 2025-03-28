@@ -57,3 +57,17 @@ async def update_user_details(clerkId: str, details: UserUpdate, db: AsyncSessio
         await db.refresh(user_details)
 
     return {"message": "User details updated successfully", "user": user, "user_details": user_details}
+
+@users_router.get("/details/{clerkId}")
+async def get_user_details(clerkId: str, db: AsyncSession = Depends(get_db)):
+    """Get user and user details for a given Clerk ID."""
+    
+    user_result = await db.execute(select(User).filter(User.clerkId == clerkId))
+    user = user_result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    details_result = await db.execute(select(UserDetails).filter(UserDetails.clerkId == clerkId))
+    user_details = details_result.scalars().first()
+
+    return {"user": user, "user_details": user_details}

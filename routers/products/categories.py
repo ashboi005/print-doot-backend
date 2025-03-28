@@ -3,7 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List
 from models import Category
-from routers.products.schemas import CategoryCreate, CategoryResponse, CategoryUpdate
+from routers.products.schemas import CategoryCreate, CategoryResponse, CategoryUpdate, CategoryListResponse
+from sqlalchemy import func
 from config import get_db 
 
 categories_router = APIRouter()
@@ -21,12 +22,17 @@ async def create_category(category: CategoryCreate, db: AsyncSession = Depends(g
     await db.refresh(new_category)
     return new_category
 
-# Public: Retrieve all categories.
-@categories_router.get("/categories", response_model=List[CategoryResponse])
+@categories_router.get("/categories", response_model=CategoryListResponse)
 async def get_categories(db: AsyncSession = Depends(get_db)):
+    # Get total count
+    total_result = await db.execute(select(func.count(Category.id)))
+    total = total_result.scalar()
+    
+    # Get all categories
     result = await db.execute(select(Category))
     categories = result.scalars().all()
-    return categories
+    
+    return {"total": total, "categories": categories}
 
 # Admin-only: Update an existing category.
 @categories_router.put("/admin/categories/{category_id}", response_model=CategoryResponse)

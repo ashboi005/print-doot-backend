@@ -49,3 +49,22 @@ class OrderResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class OrderDetailsResponse(OrderResponse):
+    user_name: str
+    email: str
+    phone_number: str
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    pin_code: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
+# For orders
+class OrderListResponse(BaseModel):
+    total: int
+    orders: List[OrderResponse]

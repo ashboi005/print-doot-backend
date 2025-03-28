@@ -1,0 +1,18 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "printdoot"
+resolve_s3 = true
+s3_prefix = "printdoot"
+region = "ap-south-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+image_repositories = []
+
+# Pass parameter values to the stack
+parameter_overrides = "AWSBucketName=\"print-doot-images\" AWSCloudfrontUrl=\"https://d1xkkyf83uw803.cloudfront.net\" GmailUser=\"printdootweb@gmail.com\""
+profile = "printdoot"
+[default.deploy.environment]
+AWSBucketName = "print-doot-images"
+AWSCloudfrontUrl = "https://d1xkkyf83uw803.cloudfront.net"
+GmailUser = "printdootweb@gmail.com"

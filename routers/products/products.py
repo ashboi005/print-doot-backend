@@ -3,9 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List, Optional
 from models import Product, Category, ProductStatus
-from routers.products.schemas import ProductCreateForm, ProductResponse, ProductStatusEnum, ProductUpdate, ProductCreateJSON
+from routers.products.schemas import ProductCreateForm, ProductResponse, ProductStatusEnum, ProductUpdate, ProductCreateJSON, ProductListResponse
+from sqlalchemy import func
 from config import get_db
 from utils.aws import upload_image_to_s3
+from sqlalchemy.orm import selectinload
 
 products_router = APIRouter()
 
@@ -87,7 +89,7 @@ async def upload_product_images(
 
     # ✅ Upload main image if provided
     if main_image:
-        main_image_url = upload_image_to_s3(main_image)
+        main_image_url = await upload_image_to_s3(main_image)
         product.main_image_url = main_image_url
 
     # ✅ Ensure side_images is a list
@@ -108,16 +110,21 @@ async def upload_product_images(
     return product
 
 
-
 # Public: Retrieve all products.
-@products_router.get("/products", response_model=List[ProductResponse])
+@products_router.get("/products", response_model=ProductListResponse)
 async def get_products(skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Product).offset(skip).limit(limit))
+    # Get total count
+    total_result = await db.execute(select(func.count(Product.id)))
+    total = total_result.scalar()
+    
+    # Get paginated products
+    query = select(Product).options(selectinload(Product.category)).offset(skip).limit(limit)
+    result = await db.execute(query)
     products = result.scalars().all()
-    return products
+    
+    return {"total": total, "products": products}
 
-# Public: Retrieve products with filtering and sorting options.
-@products_router.get("/products/filter", response_model=List[ProductResponse])
+@products_router.get("/products/filter", response_model=ProductListResponse)
 async def filter_products(
     category_id: Optional[int] = None,
     min_price: Optional[float] = None,
@@ -128,8 +135,10 @@ async def filter_products(
     limit: int = 10,
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(Product)
+    # Build base query
+    query = select(Product).options(selectinload(Product.category))
     
+    # Apply filters
     if category_id is not None:
         query = query.filter(Product.category_id == category_id)
     if min_price is not None:
@@ -139,6 +148,11 @@ async def filter_products(
     if min_rating is not None:
         query = query.filter(Product.average_rating >= min_rating)
     
+    # Get total count with filters applied
+    total_result = await db.execute(select(func.count()).select_from(query.subquery()))
+    total = total_result.scalar()
+    
+    # Apply sorting
     if sort_by:
         if sort_by == "price_asc":
             query = query.order_by(Product.price.asc())
@@ -149,10 +163,15 @@ async def filter_products(
         elif sort_by == "rating_desc":
             query = query.order_by(Product.average_rating.desc())
     
+    # Apply pagination
     query = query.offset(skip).limit(limit)
+    
+    # Execute final query
     result = await db.execute(query)
     products = result.scalars().all()
-    return products
+    
+    return {"total": total, "products": products}
+
 
 # Public: Retrieve a single product by its custom product_id.
 @products_router.get("/products/{product_id}", response_model=ProductResponse)
