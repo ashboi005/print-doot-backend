@@ -30,13 +30,22 @@ class UserCustomizationType(str, enum.Enum):
     image = "image"
     logo = "logo"
 
+# Banner Model for homepage banners
+class Banner(Base):
+    __tablename__ = "banners"
+    id = Column(Integer, primary_key=True, index=True)
+    image_url = Column(String, nullable=False)
+    display_order = Column(Integer, default=0)  # To control the order of banners
+    active = Column(Integer, default=1)  # 1 for active, 0 for inactive
+    created_at = Column(TIMESTAMP, server_default=func.now())
+
 # Category Model
 class Category(Base):
     __tablename__ = "categories"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False)
     allowed_customizations = Column(JSONB, nullable=True)
-    user_customization_options = Column(JSONB, nullable=True)
+    image_url = Column(String, nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
 
 # Product Model
@@ -48,6 +57,7 @@ class Product(Base):
     side_images_url = Column(JSONB, nullable=True)
     name = Column(String, nullable=False)
     price = Column(Integer, nullable=False)
+    bulk_prices = Column(JSONB, nullable=True)  # Store quantity-price pairs, e.g. {10: 1000, 100: 100, 1000: 50}
     category_id = Column(Integer, ForeignKey("categories.id", ondelete="CASCADE"), nullable=False)
     description = Column(String, nullable=True)
     customization_options = Column(JSONB, nullable=True)
@@ -138,4 +148,49 @@ class Receipt(Base):
     created_at = Column(TIMESTAMP, server_default=func.now())
 
     orders = relationship("Order", back_populates="receipt")
+
+# Featured Product Models
+
+class BestSelling(Base):
+    __tablename__ = "bestselling"
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(String, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=False, unique=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    
+    product = relationship("Product")
+
+class OnSale(Base):
+    __tablename__ = "on_sale"
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(String, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=False, unique=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    
+    product = relationship("Product")
+
+class Trending(Base):
+    __tablename__ = "trending"
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(String, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=False, unique=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    
+    product = relationship("Product")
+
+class NewArrivals(Base):
+    __tablename__ = "new_arrivals"
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(String, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=False, unique=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    
+    product = relationship("Product")
+
+class ShopByNeed(Base):
+    __tablename__ = "shop_by_need"
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(String, ForeignKey("products.product_id", ondelete="CASCADE"), nullable=False)
+    need = Column(String, nullable=False)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    
+    product = relationship("Product")
+    
+    __table_args__ = (UniqueConstraint('product_id', 'need', name='_product_need_uc'),)
 

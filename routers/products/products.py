@@ -3,10 +3,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List, Optional
 from models import Product, Category, ProductStatus
-from routers.products.schemas import ProductCreateForm, ProductResponse, ProductStatusEnum, ProductUpdate, ProductCreateJSON, ProductListResponse
+from routers.products.schemas import ProductCreateForm, ProductResponse, ProductStatusEnum, ProductUpdate, ProductCreateJSON, ProductListResponse, ProductImageBase64
 from sqlalchemy import func
 from config import get_db
-from utils.aws import upload_image_to_s3
+from utils.aws import upload_image_to_s3, upload_base64_image_to_s3
 from sqlalchemy.orm import selectinload
 
 products_router = APIRouter()
@@ -49,6 +49,21 @@ async def create_product_json(
                 detail=f"Category {category.name} does not allow customization options."
             )
 
+    # ✅ Validate bulk_prices if provided - using Pydantic validation
+    # No need for explicit validation as Pydantic handles it now through the BulkPriceItem model
+    if product.bulk_prices:
+        for bulk_price in product.bulk_prices:
+            if bulk_price.quantity <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Quantity must be positive (got {bulk_price.quantity})"
+                )
+            if bulk_price.price < 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Price must be non-negative (got {bulk_price.price})"
+                )
+
     # ✅ Generate unique product ID
     abbreviation = category.name.upper()[:3]
     result = await db.execute(select(Product).filter(Product.category_id == product.category_id))
@@ -65,6 +80,7 @@ async def create_product_json(
         category_id=product.category_id,
         description=product.description,
         customization_options=product.customization_options,
+        bulk_prices=[bp.dict() for bp in product.bulk_prices] if product.bulk_prices else None,  # Convert BulkPriceItem to dict for JSONB storage
         status=ProductStatus(product.status.value)
     )
 
@@ -73,12 +89,12 @@ async def create_product_json(
     await db.refresh(new_product)
     return new_product
 
-# Admin-only: Upload product images.
+# Admin-only: Upload product images using base64 encoded images
+# Supports multiple image formats: jpg, jpeg, png, gif, webp, etc.
 @products_router.post("/admin/products/{product_id}/images", response_model=ProductResponse)
 async def upload_product_images(
     product_id: str,
-    main_image: Optional[UploadFile] = File(None),
-    side_images: Optional[List[UploadFile]] = File(None),
+    images: ProductImageBase64,
     db: AsyncSession = Depends(get_db)
 ):
     # ✅ Fetch the product by its product_id
@@ -88,21 +104,28 @@ async def upload_product_images(
         raise HTTPException(status_code=404, detail="Product not found")
 
     # ✅ Upload main image if provided
-    if main_image:
-        main_image_url = await upload_image_to_s3(main_image)
+    if images.main_image:
+        main_image_url = await upload_base64_image_to_s3(
+            images.main_image, 
+            file_extension=images.main_image_extension
+        )
         product.main_image_url = main_image_url
 
-    # ✅ Ensure side_images is a list
-    if side_images is None:
-        side_images = []
-    else:
-        # Sometimes an empty value might be passed as an empty string;
-        # filter out any non-UploadFile objects.
-        side_images = [img for img in side_images if isinstance(img, UploadFile)]
-
     # ✅ Upload side images if provided
-    if side_images:
-        side_images_urls = [upload_image_to_s3(img) for img in side_images]
+    if images.side_images:
+        # Make sure we have extensions for each side image
+        extensions = images.side_images_extensions or ['jpg'] * len(images.side_images)
+        
+        # Make sure we have enough extensions
+        if len(extensions) < len(images.side_images):
+            extensions.extend(['jpg'] * (len(images.side_images) - len(extensions)))
+            
+        # Upload each side image
+        side_images_urls = []
+        for i, img in enumerate(images.side_images):
+            url = await upload_base64_image_to_s3(img, file_extension=extensions[i])
+            side_images_urls.append(url)
+            
         product.side_images_url = side_images_urls
 
     await db.commit()
@@ -201,6 +224,10 @@ async def update_product(
     # ✅ Handle status conversion if provided
     if "status" in update_data and update_data["status"]:
         update_data["status"] = ProductStatus(update_data["status"].value)
+        
+    # ✅ Handle bulk_prices conversion if provided
+    if "bulk_prices" in update_data and update_data["bulk_prices"] is not None:
+        update_data["bulk_prices"] = [bp.dict() for bp in update_data["bulk_prices"]]
 
     # ✅ Update fields dynamically
     for key, value in update_data.items():
@@ -210,6 +237,49 @@ async def update_product(
     await db.commit()
     await db.refresh(db_product)
     return db_product
+
+# Admin-only: Update a product image.
+@products_router.put("/admin/products/{product_id}/images", response_model=ProductResponse)
+async def update_product_image(
+    product_id: str,
+    image: ProductImageBase64,
+    db: AsyncSession = Depends(get_db)
+):
+    # ✅ Check if product exists
+    result = await db.execute(select(Product).filter(Product.product_id == product_id))
+    product = result.scalars().first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    # ✅ Update main image if provided
+    if image.main_image:
+        main_image_url = await upload_base64_image_to_s3(
+            image.main_image,
+            file_extension=image.main_image_extension
+        )   
+        product.main_image_url = main_image_url
+
+    # ✅ Update side images if provided
+    if image.side_images:
+        # Make sure we have extensions for each side image
+        extensions = image.side_images_extensions or ['jpg'] * len(image.side_images)   
+        
+        # Make sure we have enough extensions
+        if len(extensions) < len(image.side_images):
+            extensions.extend(['jpg'] * (len(image.side_images) - len(extensions)))
+            
+        # Upload each side image
+        side_images_urls = []
+        for i, img in enumerate(image.side_images):
+            url = await upload_base64_image_to_s3(img, file_extension=extensions[i])
+            side_images_urls.append(url)
+            
+        product.side_images_url = side_images_urls
+        
+    await db.commit()
+    await db.refresh(product)
+    return product
+
 
 # Admin-only: Delete a product.
 @products_router.delete("/admin/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)

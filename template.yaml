@@ -59,6 +59,11 @@ Resources:
     Type: AWS::Serverless::Api
     Properties:
       StageName: "Prod"
+      BinaryMediaTypes:
+        - image/jpeg
+        - image/png
+        - application/octet-stream
+        - image/webp
       GatewayResponses:
         DEFAULT_4XX:
           ResponseParameters:

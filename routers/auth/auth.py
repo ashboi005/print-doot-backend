@@ -12,6 +12,7 @@ async def get_user_by_email(db: AsyncSession, email: str):
     result = await db.execute(select(User).filter(User.email == email))
     return result.scalars().first()
 
+#BACKEND ONLY - FOR TESTING PURPOSES TO CREATE AN USER
 @auth_router.post("/create-user")
 async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
     existing_user = await get_user_by_clerkId(db, user.clerkId)
@@ -25,6 +26,7 @@ async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
     
     return new_user
 
+#BACKEND ONLY
 @auth_router.delete("/delete-user/{clerkId}")
 async def delete_user(clerkId: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).filter(User.clerkId == clerkId))

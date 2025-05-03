@@ -20,6 +20,11 @@ class UserCustomizationTypeEnum(str, Enum):
     image = "image"
     logo = "logo"
 
+# Schema for bulk price item
+class BulkPriceItem(BaseModel):
+    quantity: int
+    price: int
+
 # Schemas for Product
 class ProductCreateJSON(BaseModel):
     name: str
@@ -28,6 +33,8 @@ class ProductCreateJSON(BaseModel):
     description: Optional[str] = None
     # customization_options holds actual option values (e.g., {"size": ["S", "M", "L"], "color": ["RED", "BLUE"]})
     customization_options: Optional[Dict[str, List[str]]] = None
+    # bulk_prices holds quantity-price pairs as a list of objects with integer quantities and prices
+    bulk_prices: Optional[List[BulkPriceItem]] = None
     status: ProductStatusEnum
 
 class ProductCreateForm:
@@ -53,6 +60,7 @@ class ProductResponse(BaseModel):
     name: str
     price: int
     description: Optional[str] = None
+    bulk_prices: Optional[List[BulkPriceItem]] = None
     average_rating: float
     status: ProductStatusEnum
     main_image_url: str
@@ -84,24 +92,27 @@ class ProductUpdate(BaseModel):
     category_id: Optional[int] = None
     description: Optional[str] = None
     customization_options: Optional[Dict[str, List[str]]] = None
+    bulk_prices: Optional[List[BulkPriceItem]] = None
     status: Optional[ProductStatusEnum] = None
 
 # Schemas for Category
 class CategoryCreate(BaseModel):
     name: str
     allowed_customizations: Optional[Dict[CustomizationTypeEnum, List[str]]] = None  # size, color, etc.
-    user_customization_options: Optional[List[UserCustomizationTypeEnum]] = None  # text, image, logo
+    image: Optional[str] = None  # Base64 encoded image
+    image_extension: Optional[str] = "jpg"  # Image extension (jpg, png, etc.)
 
 class CategoryUpdate(BaseModel):
     name: Optional[str] = None
     allowed_customizations: Optional[Dict[CustomizationTypeEnum, List[str]]] = None
-    user_customization_options: Optional[List[UserCustomizationTypeEnum]] = None
+    image: Optional[str] = None  # Base64 encoded image
+    image_extension: Optional[str] = "jpg"  # Image extension (jpg, png, etc.)
 
 class CategoryResponse(BaseModel):
     id: int
     name: str
     allowed_customizations: Optional[Dict[CustomizationTypeEnum, List[str]]] = None
-    user_customization_options: Optional[List[UserCustomizationTypeEnum]] = None
+    image_url: Optional[str] = None
 
     class Config:
         orm_mode = True
@@ -132,3 +143,10 @@ class ProductListResponse(BaseModel):
 class CategoryListResponse(BaseModel):
     total: int
     categories: List[CategoryResponse]
+
+# Schema for base64 encoded product images
+class ProductImageBase64(BaseModel):
+    main_image: Optional[str] = None  # Base64 encoded image string
+    main_image_extension: Optional[str] = "jpg"  # Can be jpg, jpeg, png, webp, etc.
+    side_images: Optional[List[str]] = None  # List of base64 encoded image strings
+    side_images_extensions: Optional[List[str]] = None  # List of file extensions for each side image
