@@ -5,6 +5,7 @@ from routers.user.user import users_router
 from routers.products.products import products_router
 from routers.products.categories import categories_router
 from routers.products.reviews import reviews_router
+from routers.products.coupons import coupons_router
 from routers.orders.orders import orders_router
 from routers.featured.featured import featured_router
 from mangum import Mangum
@@ -101,7 +102,8 @@ app.include_router(users_router, prefix="/users", tags=["Users"])
 app.include_router(products_router, tags=["Products"])
 app.include_router(categories_router, tags=["Categories"])
 app.include_router(reviews_router, tags=["Reviews"])
+app.include_router(coupons_router, tags=["Coupons"])
 app.include_router(featured_router, tags=["Featured"])
 app.include_router(orders_router, tags=["Orders"])
     
-handler = Mangum(app)  
+handler = Mangum(app)

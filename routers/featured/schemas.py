@@ -38,6 +38,31 @@ class BannerUpdate(BaseModel):
     display_order: Optional[int] = None
     active: Optional[int] = None
 
+# Text Banner schemas
+class TextBannerCreate(BaseModel):
+    text: str
+    display_order: Optional[int] = 0
+    active: Optional[int] = 1
+
+class TextBannerResponse(BaseModel):
+    id: int
+    text: str
+    display_order: int
+    active: int
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+
+class TextBannerListResponse(BaseModel):
+    total: int
+    text_banners: List[TextBannerResponse]
+
+class TextBannerUpdate(BaseModel):
+    text: Optional[str] = None
+    display_order: Optional[int] = None
+    active: Optional[int] = None
+
 # Shop by need schemas
 class ShopByNeedCreate(BaseModel):
     product_id: str

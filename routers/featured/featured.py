@@ -5,14 +5,15 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy import func, distinct
 from typing import List, Optional
 from models import (
-    Product, BestSelling, OnSale, Trending, NewArrivals, ShopByNeed, Banner
+    Product, BestSelling, OnSale, Trending, NewArrivals, ShopByNeed, Banner, TextBanner
 )
 from routers.featured.schemas import (
     ProductIdList, ShopByNeedCreate, ShopByNeedUpdate, ShopByNeedResponse,
     ShopByNeedBulkCreate, FeaturedProductResponse, BestSellingListResponse,
     OnSaleListResponse, TrendingListResponse, NewArrivalsListResponse,
     ShopByNeedListResponse, NeedsListResponse, NeedResponse,
-    BannerCreate, BannerResponse, BannerListResponse, BannerUpdate
+    BannerCreate, BannerResponse, BannerListResponse, BannerUpdate,
+    TextBannerCreate, TextBannerResponse, TextBannerListResponse, TextBannerUpdate
 )
 from config import get_db
 from sqlalchemy.exc import IntegrityError
@@ -498,5 +499,105 @@ async def delete_banner(banner_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(
             status_code=500,
             detail=f"Failed to delete banner: {str(e)}"
+        )
+
+# ---------------------- Text Banner Routes ----------------------
+
+@featured_router.post("/admin/text-banners", response_model=TextBannerResponse, status_code=status.HTTP_201_CREATED)
+async def add_text_banner(text_banner: TextBannerCreate, db: AsyncSession = Depends(get_db)):
+    """Add a new text banner to the homepage."""
+    try:
+        # Create new text banner entry
+        new_text_banner = TextBanner(
+            text=text_banner.text,
+            display_order=text_banner.display_order,
+            active=text_banner.active
+        )
+        
+        db.add(new_text_banner)
+        await db.commit()
+        await db.refresh(new_text_banner)
+        
+        return new_text_banner
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to create text banner: {str(e)}"
+        )
+
+@featured_router.get("/text-banners", response_model=TextBannerListResponse)
+async def get_text_banners(active_only: Optional[bool] = False, db: AsyncSession = Depends(get_db)):
+    """Get all text banners or only active text banners if active_only is True."""
+    try:
+        # Build query based on active_only parameter
+        query = select(TextBanner)
+        if active_only:
+            query = query.filter(TextBanner.active == 1)
+            
+        query = query.order_by(TextBanner.display_order)
+            
+        # Get total count
+        total_result = await db.execute(select(func.count()).select_from(query.subquery()))
+        total = total_result.scalar()
+        
+        # Get text banners
+        result = await db.execute(query)
+        text_banners = result.scalars().all()
+        
+        return {"total": total, "text_banners": text_banners}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve text banners: {str(e)}"
+        )
+
+@featured_router.put("/admin/text-banners/{text_banner_id}", response_model=TextBannerResponse)
+async def update_text_banner(text_banner_id: int, text_banner: TextBannerUpdate, db: AsyncSession = Depends(get_db)):
+    """Update text banner content, colors, display order or active status."""
+    try:
+        # Check if text banner exists
+        result = await db.execute(select(TextBanner).filter(TextBanner.id == text_banner_id))
+        db_text_banner = result.scalars().first()
+        if not db_text_banner:
+            raise HTTPException(status_code=404, detail="Text banner not found")
+        
+        # Update specified fields
+        update_data = text_banner.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_text_banner, key, value)
+            
+        await db.commit()
+        await db.refresh(db_text_banner)
+        
+        return db_text_banner
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update text banner: {str(e)}"
+        )
+
+@featured_router.delete("/admin/text-banners/{text_banner_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_text_banner(text_banner_id: int, db: AsyncSession = Depends(get_db)):
+    """Delete a text banner."""
+    try:
+        # Check if text banner exists
+        result = await db.execute(select(TextBanner).filter(TextBanner.id == text_banner_id))
+        db_text_banner = result.scalars().first()
+        if not db_text_banner:
+            raise HTTPException(status_code=404, detail="Text banner not found")
+        
+        # Delete the text banner
+        await db.delete(db_text_banner)
+        await db.commit()
+        
+        return
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete text banner: {str(e)}"
         )
 

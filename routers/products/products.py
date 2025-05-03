@@ -64,11 +64,26 @@ async def create_product_json(
                     detail=f"Price must be non-negative (got {bulk_price.price})"
                 )
 
-    # ✅ Generate unique product ID
-    abbreviation = category.name.upper()[:3]
-    result = await db.execute(select(Product).filter(Product.category_id == product.category_id))
-    count = len(result.scalars().all())
-    new_product_id = f"PRNTDT{abbreviation}{count + 1:03d}"
+    # ✅ Use provided product_id or generate a unique one if not provided
+    new_product_id = None
+    if product.product_id:
+        # Use admin-provided product_id
+        new_product_id = product.product_id
+        
+        # Check if product_id already exists
+        result = await db.execute(select(Product).filter(Product.product_id == new_product_id))
+        existing_product = result.scalars().first()
+        if existing_product:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Product ID '{new_product_id}' already exists. Please use a unique ID."
+            )
+    else:
+        # Generate unique product ID if not provided
+        abbreviation = category.name.upper()[:3]
+        result = await db.execute(select(Product).filter(Product.category_id == product.category_id))
+        count = len(result.scalars().all())
+        new_product_id = f"PRNTDT{abbreviation}{count + 1:03d}"
 
     # ✅ Process dimensions if provided
     dimensions_dict = None

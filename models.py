@@ -1,8 +1,8 @@
 # models.py
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Enum, TIMESTAMP, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Enum, TIMESTAMP, UniqueConstraint, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, ARRAY
 import enum
 from sqlalchemy import func
 
@@ -36,6 +36,17 @@ class Banner(Base):
     id = Column(Integer, primary_key=True, index=True)
     image_url = Column(String, nullable=False)
     display_order = Column(Integer, default=0)  # To control the order of banners
+    active = Column(Integer, default=1)  # 1 for active, 0 for inactive
+    created_at = Column(TIMESTAMP, server_default=func.now())
+
+# TextBanner Model for homepage text banners
+class TextBanner(Base):
+    __tablename__ = "text_banners"
+    id = Column(Integer, primary_key=True, index=True)
+    text = Column(String, nullable=False)
+    background_color = Column(String, default="#FFFFFF")  # Optional background color, default white
+    text_color = Column(String, default="#000000")  # Optional text color, default black
+    display_order = Column(Integer, default=0)  # To control the order of text banners
     active = Column(Integer, default=1)  # 1 for active, 0 for inactive
     created_at = Column(TIMESTAMP, server_default=func.now())
 
@@ -196,4 +207,16 @@ class ShopByNeed(Base):
     product = relationship("Product")
     
     __table_args__ = (UniqueConstraint('product_id', 'need', name='_product_need_uc'),)
+
+# Coupon Model
+class Coupon(Base):
+    __tablename__ = "coupons"
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String, unique=True, nullable=False)
+    discount_percentage = Column(Integer, nullable=False)
+    applicable_categories = Column(ARRAY(Integer), nullable=True)  # Array of category IDs
+    applicable_products = Column(ARRAY(String), nullable=True)  # Array of product_ids
+    active = Column(Integer, default=1)  # 1 for active, 0 for inactive
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    expires_at = Column(TIMESTAMP, nullable=True)  # Optional expiration date
 

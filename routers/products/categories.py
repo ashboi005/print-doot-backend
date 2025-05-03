@@ -73,3 +73,4 @@ async def update_category(category_id: int, category_update: CategoryUpdate, db:
     await db.commit()
     await db.refresh(category)
     return category
+

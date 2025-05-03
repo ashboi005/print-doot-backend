@@ -1,7 +1,8 @@
 from pydantic import BaseModel, root_validator
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Union
 from enum import Enum
 from fastapi import Form
+from datetime import datetime
 
 # Enum for product status in schemas.
 class ProductStatusEnum(str, Enum):
@@ -36,6 +37,7 @@ class ProductCreateJSON(BaseModel):
     name: str
     price: int
     category_id: int
+    product_id: Optional[str] = None  # Optional field for admin to provide custom product ID
     description: Optional[str] = None
     # customization_options holds actual option values (e.g., {"size": ["S", "M", "L"], "color": ["RED", "BLUE"]})
     customization_options: Optional[Dict[str, List[str]]] = None
@@ -165,3 +167,46 @@ class ProductImageBase64(BaseModel):
     main_image_extension: Optional[str] = "jpg"  # Can be jpg, jpeg, png, webp, etc.
     side_images: Optional[List[str]] = None  # List of base64 encoded image strings
     side_images_extensions: Optional[List[str]] = None  # List of file extensions for each side image
+
+# Schemas for Coupon
+class CouponCreate(BaseModel):
+    code: str
+    discount_percentage: int
+    applicable_categories: Optional[List[int]] = None
+    applicable_products: Optional[List[str]] = None
+    expires_at: Optional[datetime] = None
+
+class CouponUpdate(BaseModel):
+    code: Optional[str] = None
+    discount_percentage: Optional[int] = None
+    applicable_categories: Optional[List[int]] = None
+    applicable_products: Optional[List[str]] = None
+    active: Optional[int] = None
+    expires_at: Optional[datetime] = None
+
+class CouponResponse(BaseModel):
+    id: int
+    code: str
+    discount_percentage: int
+    applicable_categories: Optional[List[int]] = None
+    applicable_products: Optional[List[str]] = None
+    active: int
+    created_at: datetime
+    expires_at: Optional[datetime] = None
+
+    class Config:
+        orm_mode = True
+
+class CouponListResponse(BaseModel):
+    total: int
+    coupons: List[CouponResponse]
+
+class CouponVerifyRequest(BaseModel):
+    code: str
+    category_id: Optional[int] = None
+    product_id: Optional[str] = None
+
+class CouponVerifyResponse(BaseModel):
+    valid: bool
+    discount_percentage: Optional[int] = None
+    message: Optional[str] = None
