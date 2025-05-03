@@ -53,10 +53,15 @@ async def create_product_json(
     # No need for explicit validation as Pydantic handles it now through the BulkPriceItem model
     if product.bulk_prices:
         for bulk_price in product.bulk_prices:
-            if bulk_price.quantity <= 0:
+            if bulk_price.min_quantity <= 0:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Quantity must be positive (got {bulk_price.quantity})"
+                    detail=f"Minimum quantity must be positive (got {bulk_price.min_quantity})"
+                )
+            if bulk_price.max_quantity is not None and bulk_price.max_quantity <= bulk_price.min_quantity:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Maximum quantity ({bulk_price.max_quantity}) must be greater than minimum quantity ({bulk_price.min_quantity})"
                 )
             if bulk_price.price < 0:
                 raise HTTPException(

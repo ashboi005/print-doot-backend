@@ -27,9 +27,10 @@ class ProductDimensions(BaseModel):
     breadth: float
     height: float
 
-# Schema for bulk price item
+# Schema for bulk price range item
 class BulkPriceItem(BaseModel):
-    quantity: int
+    min_quantity: int
+    max_quantity: Optional[int] = None  # Optional upper limit, if None it means "and above"
     price: int
 
 # Schemas for Product
