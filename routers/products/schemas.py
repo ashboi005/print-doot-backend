@@ -20,6 +20,12 @@ class UserCustomizationTypeEnum(str, Enum):
     image = "image"
     logo = "logo"
 
+# Schema for dimensions
+class ProductDimensions(BaseModel):
+    length: float
+    breadth: float
+    height: float
+
 # Schema for bulk price item
 class BulkPriceItem(BaseModel):
     quantity: int
@@ -35,6 +41,9 @@ class ProductCreateJSON(BaseModel):
     customization_options: Optional[Dict[str, List[str]]] = None
     # bulk_prices holds quantity-price pairs as a list of objects with integer quantities and prices
     bulk_prices: Optional[List[BulkPriceItem]] = None
+    dimensions: Optional[ProductDimensions] = None
+    weight: Optional[int] = None  # Weight in grams
+    material: Optional[str] = None  # Material the product is made of
     status: ProductStatusEnum
 
 class ProductCreateForm:
@@ -61,6 +70,9 @@ class ProductResponse(BaseModel):
     price: int
     description: Optional[str] = None
     bulk_prices: Optional[List[BulkPriceItem]] = None
+    dimensions: Optional[ProductDimensions] = None
+    weight: Optional[int] = None  # Weight in grams
+    material: Optional[str] = None  # Material the product is made of
     average_rating: float
     status: ProductStatusEnum
     main_image_url: str
@@ -93,6 +105,9 @@ class ProductUpdate(BaseModel):
     description: Optional[str] = None
     customization_options: Optional[Dict[str, List[str]]] = None
     bulk_prices: Optional[List[BulkPriceItem]] = None
+    dimensions: Optional[ProductDimensions] = None
+    weight: Optional[int] = None
+    material: Optional[str] = None
     status: Optional[ProductStatusEnum] = None
 
 # Schemas for Category

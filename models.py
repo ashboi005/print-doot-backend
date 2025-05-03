@@ -61,6 +61,9 @@ class Product(Base):
     category_id = Column(Integer, ForeignKey("categories.id", ondelete="CASCADE"), nullable=False)
     description = Column(String, nullable=True)
     customization_options = Column(JSONB, nullable=True)
+    dimensions = Column(JSONB, nullable=True)  # Store length, breadth, height as a JSON object
+    weight = Column(Integer, nullable=True)  # Weight in grams
+    material = Column(String, nullable=True)  # Material the product is made of
     status = Column(Enum(ProductStatus), nullable=False, default=ProductStatus.in_stock)
     average_rating = Column(Float, default=0)
     created_at = Column(TIMESTAMP, server_default=func.now())

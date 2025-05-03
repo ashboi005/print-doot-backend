@@ -70,6 +70,11 @@ async def create_product_json(
     count = len(result.scalars().all())
     new_product_id = f"PRNTDT{abbreviation}{count + 1:03d}"
 
+    # ✅ Process dimensions if provided
+    dimensions_dict = None
+    if product.dimensions:
+        dimensions_dict = product.dimensions.dict()
+
     # ✅ Create new product instance (set image URLs as empty)
     new_product = Product(
         product_id=new_product_id,
@@ -80,7 +85,10 @@ async def create_product_json(
         category_id=product.category_id,
         description=product.description,
         customization_options=product.customization_options,
-        bulk_prices=[bp.dict() for bp in product.bulk_prices] if product.bulk_prices else None,  # Convert BulkPriceItem to dict for JSONB storage
+        bulk_prices=[bp.dict() for bp in product.bulk_prices] if product.bulk_prices else None,
+        dimensions=dimensions_dict,
+        weight=product.weight,
+        material=product.material,
         status=ProductStatus(product.status.value)
     )
 
@@ -228,6 +236,10 @@ async def update_product(
     # ✅ Handle bulk_prices conversion if provided
     if "bulk_prices" in update_data and update_data["bulk_prices"] is not None:
         update_data["bulk_prices"] = [bp.dict() for bp in update_data["bulk_prices"]]
+        
+    # ✅ Handle dimensions conversion if provided
+    if "dimensions" in update_data and update_data["dimensions"] is not None:
+        update_data["dimensions"] = update_data["dimensions"].dict()
 
     # ✅ Update fields dynamically
     for key, value in update_data.items():
