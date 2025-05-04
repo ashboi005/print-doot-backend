@@ -76,6 +76,7 @@ class ProductResponse(BaseModel):
     dimensions: Optional[ProductDimensions] = None
     weight: Optional[int] = None  # Weight in grams
     material: Optional[str] = None  # Material the product is made of
+    customization_options: Optional[Dict[str, Dict[str, str]]] = None  # e.g. {"size": ["S:#size_S", "M:#size_M"], "color": ["RED:#FF0000", "BLUE:#0000FF"]}
     average_rating: float
     status: ProductStatusEnum
     main_image_url: str

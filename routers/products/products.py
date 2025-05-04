@@ -168,12 +168,24 @@ async def get_products(skip: int = 0, limit: int = 10, db: AsyncSession = Depend
     total_result = await db.execute(select(func.count(Product.id)))
     total = total_result.scalar()
     
-    # Get paginated products
-    query = select(Product).options(selectinload(Product.category)).offset(skip).limit(limit)
-    result = await db.execute(query)
-    products = result.scalars().all()
+    # Handle edge cases for pagination
+    if total == 0:
+        return {"total": 0, "products": []}
     
-    return {"total": total, "products": products}
+    # Ensure skip is not greater than total
+    if skip >= total:
+        skip = max(0, total - (total % limit or limit))  # Adjust to last page
+    
+    # Get paginated products with proper error handling
+    try:
+        query = select(Product).options(selectinload(Product.category)).offset(skip).limit(limit)
+        result = await db.execute(query)
+        products = result.scalars().all()
+        return {"total": total, "products": products}
+    except Exception as e:
+        # Log the error and return a safe response
+        print(f"Error fetching products: {str(e)}")
+        return {"total": total, "products": [], "error": "An error occurred while fetching products"}
 
 @products_router.get("/products/filter", response_model=ProductListResponse)
 async def filter_products(
@@ -203,6 +215,14 @@ async def filter_products(
     total_result = await db.execute(select(func.count()).select_from(query.subquery()))
     total = total_result.scalar()
     
+    # Handle edge cases for pagination
+    if total == 0:
+        return {"total": 0, "products": []}
+    
+    # Ensure skip is not greater than total
+    if skip >= total:
+        skip = max(0, total - (total % limit or limit))  # Adjust to last page
+    
     # Apply sorting
     if sort_by:
         if sort_by == "price_asc":
@@ -214,20 +234,24 @@ async def filter_products(
         elif sort_by == "rating_desc":
             query = query.order_by(Product.average_rating.desc())
     
-    # Apply pagination
-    query = query.offset(skip).limit(limit)
-    
-    # Execute final query
-    result = await db.execute(query)
-    products = result.scalars().all()
-    
-    return {"total": total, "products": products}
+    # Apply pagination and handle errors
+    try:
+        query = query.offset(skip).limit(limit)
+        result = await db.execute(query)
+        products = result.scalars().all()
+        return {"total": total, "products": products}
+    except Exception as e:
+        # Log the error and return a safe response
+        print(f"Error fetching filtered products: {str(e)}")
+        return {"total": total, "products": [], "error": "An error occurred while fetching products"}
 
 
 # Public: Retrieve a single product by its custom product_id.
 @products_router.get("/products/{product_id}", response_model=ProductResponse)
 async def get_product(product_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Product).filter(Product.product_id == product_id))
+    # Add selectinload for the category relationship to ensure category data is loaded
+    query = select(Product).options(selectinload(Product.category)).filter(Product.product_id == product_id)
+    result = await db.execute(query)
     product = result.scalars().first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
