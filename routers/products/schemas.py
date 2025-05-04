@@ -40,8 +40,8 @@ class ProductCreateJSON(BaseModel):
     category_id: int
     product_id: Optional[str] = None  # Optional field for admin to provide custom product ID
     description: Optional[str] = None
-    # customization_options holds actual option values (e.g., {"size": ["S", "M", "L"], "color": ["RED", "BLUE"]})
-    customization_options: Optional[Dict[str, List[str]]] = None
+    # customization_options holds actual option values (e.g., {"size": ["S:#size_S", "M:#size_M"], "color": ["RED:#FF0000", "BLUE:#0000FF"]})
+    customization_options: Optional[Dict[str, Dict[str, str]]] = None
     # bulk_prices holds quantity-price pairs as a list of objects with integer quantities and prices
     bulk_prices: Optional[List[BulkPriceItem]] = None
     dimensions: Optional[ProductDimensions] = None
@@ -106,7 +106,7 @@ class ProductUpdate(BaseModel):
     price: Optional[int] = None
     category_id: Optional[int] = None
     description: Optional[str] = None
-    customization_options: Optional[Dict[str, List[str]]] = None
+    customization_options: Optional[Dict[str, Dict[str, str]]] = None
     bulk_prices: Optional[List[BulkPriceItem]] = None
     dimensions: Optional[ProductDimensions] = None
     weight: Optional[int] = None
@@ -116,20 +116,20 @@ class ProductUpdate(BaseModel):
 # Schemas for Category
 class CategoryCreate(BaseModel):
     name: str
-    allowed_customizations: Optional[Dict[CustomizationTypeEnum, List[str]]] = None  # size, color, etc.
+    allowed_customizations: Optional[Dict[CustomizationTypeEnum, Dict[str, str]]] = None  # e.g. {"color": {"RED": "#FF0000", "BLUE": "#0000FF"}}
     image: Optional[str] = None  # Base64 encoded image
     image_extension: Optional[str] = "jpg"  # Image extension (jpg, png, etc.)
 
 class CategoryUpdate(BaseModel):
     name: Optional[str] = None
-    allowed_customizations: Optional[Dict[CustomizationTypeEnum, List[str]]] = None
+    allowed_customizations: Optional[Dict[CustomizationTypeEnum, Dict[str, str]]] = None  # e.g. {"color": {"RED": "#FF0000", "BLUE": "#0000FF"}}
     image: Optional[str] = None  # Base64 encoded image
     image_extension: Optional[str] = "jpg"  # Image extension (jpg, png, etc.)
 
 class CategoryResponse(BaseModel):
     id: int
     name: str
-    allowed_customizations: Optional[Dict[CustomizationTypeEnum, List[str]]] = None
+    allowed_customizations: Optional[Dict[CustomizationTypeEnum, Dict[str, str]]] = None
     image_url: Optional[str] = None
 
     class Config:

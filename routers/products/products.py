@@ -23,7 +23,7 @@ async def create_product_json(
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
     
-    # ✅ (Optional) Validate customization options against category.allowed_customizations
+    # ✅ Validate customization options against category.allowed_customizations
     if product.customization_options:
         if category.allowed_customizations:
             allowed_keys = set(category.allowed_customizations.keys())
@@ -35,8 +35,8 @@ async def create_product_json(
                     detail=f"Customization option keys {invalid_keys} are not allowed for category {category.name}"
                 )
             for key in provided_keys:
-                allowed_values = set(category.allowed_customizations.get(key, []))
-                provided_values = set(product.customization_options.get(key, []))
+                allowed_values = set(category.allowed_customizations.get(key, {}).keys())
+                provided_values = set(product.customization_options.get(key, {}).keys())
                 if not provided_values.issubset(allowed_values):
                     invalid_values = provided_values - allowed_values
                     raise HTTPException(
@@ -248,6 +248,39 @@ async def update_product(
         raise HTTPException(status_code=404, detail="Product not found")
 
     update_data = product.dict(exclude_unset=True)
+
+    # ✅ Validate customization options if provided
+    if "customization_options" in update_data and update_data["customization_options"]:
+        # Get the category
+        result = await db.execute(select(Category).filter(Category.id == db_product.category_id))
+        category = result.scalars().first()
+        
+        if category and category.allowed_customizations:
+            # Validate customization keys
+            allowed_keys = set(category.allowed_customizations.keys())
+            provided_keys = set(update_data["customization_options"].keys())
+            if not provided_keys.issubset(allowed_keys):
+                invalid_keys = provided_keys - allowed_keys
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Customization option keys {invalid_keys} are not allowed for category {category.name}"
+                )
+            
+            # Validate values for each key
+            for key in provided_keys:
+                allowed_values = set(category.allowed_customizations.get(key, {}).keys())
+                provided_values = set(update_data["customization_options"].get(key, {}).keys())
+                if not provided_values.issubset(allowed_values):
+                    invalid_values = provided_values - allowed_values
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Values {invalid_values} for customization '{key}' are not allowed for category {category.name}"
+                    )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Category does not allow customization options."
+            )
 
     # ✅ Handle status conversion if provided
     if "status" in update_data and update_data["status"]:

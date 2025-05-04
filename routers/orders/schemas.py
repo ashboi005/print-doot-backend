@@ -13,7 +13,7 @@ class UserCustomizationEnum(str, Enum):
 class OrderItemCreate(BaseModel):
     product_id: str
     quantity: int
-    selected_customizations: Optional[Dict[str, str]] = None
+    selected_customizations: Optional[Dict[str, Dict[str, str]]] = None
     user_customization_type: UserCustomizationEnum
     user_customization_value: Optional[str]  # Optional if image/logo uploaded separately
     individual_price: int
@@ -22,7 +22,7 @@ class OrderItemCreate(BaseModel):
 class OrderItemWithBase64(BaseModel):
     product_id: str
     quantity: int
-    selected_customizations: Optional[Dict[str, str]] = None
+    selected_customizations: Optional[Dict[str, Dict[str, str]]] = None
     user_customization_type: UserCustomizationEnum
     user_customization_value: Optional[str] = None  # Text or base64 image
     image_extension: Optional[str] = "jpg"  # Only used for image/logo types
@@ -45,7 +45,7 @@ class OrderCreateJSON(BaseModel):
 class OrderItemResponse(BaseModel):
     product_id: str
     quantity: int
-    selected_customizations: Optional[Dict[str, str]] = None
+    selected_customizations: Optional[Dict[str, Dict[str, str]]] = None
     user_customization_type: UserCustomizationEnum
     user_customization_value: Optional[str]
     individual_price: int

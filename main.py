@@ -69,11 +69,11 @@ def home():
     <head>
       <title>Print Doot API</title>
       <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f6e4ff; }
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #B3D9FF; }
         h1 { color: #333; }
         ul { list-style-type: none; padding: 0; }
         li { margin: 10px 0; }
-        a { color: #B3D9FF; text-decoration: none; }
+        a { color: #0066cc; text-decoration: none; }
         a:hover { text-decoration: underline; }
         hr { margin: 20px 0; }
         h2 { color: #555; }
