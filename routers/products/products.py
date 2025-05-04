@@ -355,11 +355,16 @@ async def update_product(
         
     # ✅ Handle bulk_prices conversion if provided
     if "bulk_prices" in update_data and update_data["bulk_prices"] is not None:
-        update_data["bulk_prices"] = [bp.dict() for bp in update_data["bulk_prices"]]
+        # Check if items in bulk_prices are dictionaries or Pydantic models
+        if update_data["bulk_prices"] and hasattr(update_data["bulk_prices"][0], "dict"):
+            # If they are Pydantic models, convert to dictionaries
+            update_data["bulk_prices"] = [bp.dict() for bp in update_data["bulk_prices"]]
         
     # ✅ Handle dimensions conversion if provided
     if "dimensions" in update_data and update_data["dimensions"] is not None:
-        update_data["dimensions"] = update_data["dimensions"].dict()
+        # Check if dimensions is a dictionary or Pydantic model
+        if hasattr(update_data["dimensions"], "dict"):
+            update_data["dimensions"] = update_data["dimensions"].dict()
 
     # ✅ Update fields dynamically
     for key, value in update_data.items():
