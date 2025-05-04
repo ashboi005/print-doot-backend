@@ -21,6 +21,7 @@ app = FastAPI(
     servers=[
         {"url": "https://oj5k6unyp3.execute-api.ap-south-1.amazonaws.com/Prod", "description": "Production Server"},
         {"url": "http://localhost:8000", "description": "Local Development Server"},
+        {"url": "https://pleasant-mullet-unified.ngrok-free.app/", "description": "Ngrok Tunnel"},
     ],
 )
  

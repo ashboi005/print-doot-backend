@@ -78,6 +78,7 @@ class ProductResponse(BaseModel):
     material: Optional[str] = None  # Material the product is made of
     customization_options: Optional[Dict[str, Dict[str, str]]] = None  # e.g. {"size": ["S:#size_S", "M:#size_M"], "color": ["RED:#FF0000", "BLUE:#0000FF"]}
     average_rating: float
+    review_count: int = 0  # Add review count field
     status: ProductStatusEnum
     main_image_url: str
     side_images_url: Optional[List[str]] = None

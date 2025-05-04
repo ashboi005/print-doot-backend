@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List, Optional
-from models import Product, Category, ProductStatus
+from models import Product, Category, ProductStatus, ProductReview
 from routers.products.schemas import ProductCreateForm, ProductResponse, ProductStatusEnum, ProductUpdate, ProductCreateJSON, ProductListResponse, ProductImageBase64
 from sqlalchemy import func
 from config import get_db
@@ -181,6 +181,23 @@ async def get_products(skip: int = 0, limit: int = 10, db: AsyncSession = Depend
         query = select(Product).options(selectinload(Product.category)).offset(skip).limit(limit)
         result = await db.execute(query)
         products = result.scalars().all()
+        
+        # Get review counts for each product
+        product_ids = [product.product_id for product in products]
+        review_counts = {}
+        
+        # Count reviews for each product
+        if product_ids:
+            review_count_query = select(ProductReview.product_id, func.count(ProductReview.id).label('count'))\
+                .where(ProductReview.product_id.in_(product_ids))\
+                .group_by(ProductReview.product_id)
+            review_result = await db.execute(review_count_query)
+            review_counts = {product_id: count for product_id, count in review_result}
+        
+        # Add review count to each product
+        for product in products:
+            product.review_count = review_counts.get(product.product_id, 0)
+            
         return {"total": total, "products": products}
     except Exception as e:
         # Log the error and return a safe response
@@ -239,6 +256,23 @@ async def filter_products(
         query = query.offset(skip).limit(limit)
         result = await db.execute(query)
         products = result.scalars().all()
+        
+        # Get review counts for each product
+        product_ids = [product.product_id for product in products]
+        review_counts = {}
+        
+        # Count reviews for each product
+        if product_ids:
+            review_count_query = select(ProductReview.product_id, func.count(ProductReview.id).label('count'))\
+                .where(ProductReview.product_id.in_(product_ids))\
+                .group_by(ProductReview.product_id)
+            review_result = await db.execute(review_count_query)
+            review_counts = {product_id: count for product_id, count in review_result}
+        
+        # Add review count to each product
+        for product in products:
+            product.review_count = review_counts.get(product.product_id, 0)
+            
         return {"total": total, "products": products}
     except Exception as e:
         # Log the error and return a safe response
@@ -255,6 +289,15 @@ async def get_product(product_id: str, db: AsyncSession = Depends(get_db)):
     product = result.scalars().first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+    
+    # Get the review count for this product
+    review_count_query = select(func.count(ProductReview.id)).filter(ProductReview.product_id == product_id)
+    review_count_result = await db.execute(review_count_query)
+    review_count = review_count_result.scalar() or 0
+    
+    # Set the review count on the product
+    product.review_count = review_count
+    
     return product
 
 
