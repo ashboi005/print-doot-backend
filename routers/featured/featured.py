@@ -98,14 +98,27 @@ async def add_bestselling(product_ids: ProductIdList, db: AsyncSession = Depends
     return {"message": f"Added {added_count} products to bestselling successfully"}
 
 @featured_router.get("/bestselling", response_model=BestSellingListResponse)
-async def get_bestselling(db: AsyncSession = Depends(get_db)):
-    """Get all bestselling products with details."""
+async def get_bestselling(skip: int = 0, limit: int = 6, db: AsyncSession = Depends(get_db)):
+    """Get bestselling products with pagination."""
     # Get total count
     total_result = await db.execute(select(func.count(BestSelling.id)))
     total = total_result.scalar()
     
-    # Get bestselling products
-    result = await db.execute(select(BestSelling).order_by(BestSelling.created_at.desc()))
+    # Handle edge cases for pagination
+    if total == 0:
+        return {"total": 0, "products": []}
+    
+    # Ensure skip is not greater than total
+    if skip >= total:
+        skip = max(0, total - (total % limit or limit))  # Adjust to last page
+    
+    # Get bestselling products with pagination
+    result = await db.execute(
+        select(BestSelling)
+        .order_by(BestSelling.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
     bestselling = result.scalars().all()
     
     # Build response with product details
@@ -157,14 +170,27 @@ async def add_onsale(product_ids: ProductIdList, db: AsyncSession = Depends(get_
     return {"message": f"Added {added_count} products to on-sale successfully"}
 
 @featured_router.get("/onsale", response_model=OnSaleListResponse)
-async def get_onsale(db: AsyncSession = Depends(get_db)):
-    """Get all on-sale products with details."""
+async def get_onsale(skip: int = 0, limit: int = 6, db: AsyncSession = Depends(get_db)):
+    """Get on-sale products with pagination."""
     # Get total count
     total_result = await db.execute(select(func.count(OnSale.id)))
     total = total_result.scalar()
     
-    # Get on-sale products
-    result = await db.execute(select(OnSale).order_by(OnSale.created_at.desc()))
+    # Handle edge cases for pagination
+    if total == 0:
+        return {"total": 0, "products": []}
+    
+    # Ensure skip is not greater than total
+    if skip >= total:
+        skip = max(0, total - (total % limit or limit))  # Adjust to last page
+    
+    # Get on-sale products with pagination
+    result = await db.execute(
+        select(OnSale)
+        .order_by(OnSale.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
     onsale = result.scalars().all()
     
     # Build response with product details
@@ -216,14 +242,27 @@ async def add_trending(product_ids: ProductIdList, db: AsyncSession = Depends(ge
     return {"message": f"Added {added_count} products to trending successfully"}
 
 @featured_router.get("/trending", response_model=TrendingListResponse)
-async def get_trending(db: AsyncSession = Depends(get_db)):
-    """Get all trending products with details."""
+async def get_trending(skip: int = 0, limit: int = 6, db: AsyncSession = Depends(get_db)):
+    """Get trending products with pagination."""
     # Get total count
     total_result = await db.execute(select(func.count(Trending.id)))
     total = total_result.scalar()
     
-    # Get trending products
-    result = await db.execute(select(Trending).order_by(Trending.created_at.desc()))
+    # Handle edge cases for pagination
+    if total == 0:
+        return {"total": 0, "products": []}
+    
+    # Ensure skip is not greater than total
+    if skip >= total:
+        skip = max(0, total - (total % limit or limit))  # Adjust to last page
+    
+    # Get trending products with pagination
+    result = await db.execute(
+        select(Trending)
+        .order_by(Trending.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
     trending = result.scalars().all()
     
     # Build response with product details
@@ -275,14 +314,27 @@ async def add_newarrivals(product_ids: ProductIdList, db: AsyncSession = Depends
     return {"message": f"Added {added_count} products to new arrivals successfully"}
 
 @featured_router.get("/newarrivals", response_model=NewArrivalsListResponse)
-async def get_newarrivals(db: AsyncSession = Depends(get_db)):
-    """Get all new arrivals products with details."""
+async def get_newarrivals(skip: int = 0, limit: int = 6, db: AsyncSession = Depends(get_db)):
+    """Get new arrivals products with pagination."""
     # Get total count
     total_result = await db.execute(select(func.count(NewArrivals.id)))
     total = total_result.scalar()
     
-    # Get new arrivals products
-    result = await db.execute(select(NewArrivals).order_by(NewArrivals.created_at.desc()))
+    # Handle edge cases for pagination
+    if total == 0:
+        return {"total": 0, "products": []}
+    
+    # Ensure skip is not greater than total
+    if skip >= total:
+        skip = max(0, total - (total % limit or limit))  # Adjust to last page
+    
+    # Get new arrivals products with pagination
+    result = await db.execute(
+        select(NewArrivals)
+        .order_by(NewArrivals.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
     newarrivals = result.scalars().all()
     
     # Build response with product details
@@ -350,19 +402,29 @@ async def get_needs(db: AsyncSession = Depends(get_db)):
     return {"total": len(need_responses), "needs": need_responses}
 
 @featured_router.get("/shopbyneed/{need}", response_model=ShopByNeedListResponse)
-async def get_shopbyneed_by_need(need: str, db: AsyncSession = Depends(get_db)):
-    """Get all products for a specific need."""
+async def get_shopbyneed_by_need(need: str, skip: int = 0, limit: int = 6, db: AsyncSession = Depends(get_db)):
+    """Get products for a specific need with pagination."""
     # Get total count
     total_result = await db.execute(
         select(func.count(ShopByNeed.id)).filter(ShopByNeed.need == need)
     )
     total = total_result.scalar()
     
-    # Get shop by need products
+    # Handle edge cases for pagination
+    if total == 0:
+        return {"total": 0, "products": []}
+    
+    # Ensure skip is not greater than total
+    if skip >= total:
+        skip = max(0, total - (total % limit or limit))  # Adjust to last page
+    
+    # Get shop by need products with pagination
     result = await db.execute(
         select(ShopByNeed)
         .filter(ShopByNeed.need == need)
         .order_by(ShopByNeed.created_at.desc())
+        .offset(skip)
+        .limit(limit)
     )
     shopbyneed = result.scalars().all()
     
