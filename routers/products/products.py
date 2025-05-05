@@ -210,6 +210,7 @@ async def filter_products(
     min_price: Optional[float] = None,
     max_price: Optional[float] = None,
     min_rating: Optional[float] = None,
+    search: Optional[str] = None,  # New parameter for searching by product name
     sort_by: Optional[str] = None,
     skip: int = 0,
     limit: int = 10,
@@ -227,6 +228,10 @@ async def filter_products(
         query = query.filter(Product.price <= max_price)
     if min_rating is not None:
         query = query.filter(Product.average_rating >= min_rating)
+    # Add search by product name filter
+    if search is not None and search.strip():
+        search_term = f"%{search.strip()}%"  # Add wildcards for partial matching
+        query = query.filter(Product.name.ilike(search_term))
     
     # Get total count with filters applied
     total_result = await db.execute(select(func.count()).select_from(query.subquery()))
@@ -250,6 +255,11 @@ async def filter_products(
             query = query.order_by(Product.average_rating.asc())
         elif sort_by == "rating_desc":
             query = query.order_by(Product.average_rating.desc())
+        # Add name-based sorting options
+        elif sort_by == "name_asc":
+            query = query.order_by(Product.name.asc())
+        elif sort_by == "name_desc":
+            query = query.order_by(Product.name.desc())
     
     # Apply pagination and handle errors
     try:
@@ -417,7 +427,6 @@ async def update_product_image(
     await db.refresh(product)
     return product
 
-
 # Admin-only: Delete a product.
 @products_router.delete("/admin/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_product(product_id: str, db: AsyncSession = Depends(get_db)):
@@ -428,3 +437,4 @@ async def delete_product(product_id: str, db: AsyncSession = Depends(get_db)):
     await db.delete(db_product)
     await db.commit()
     return
+
